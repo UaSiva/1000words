@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voicecribe - Live Speech & Google Images Spotlight</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f6ff',
+                            100: '#e0edff',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        },
+                        accent: {
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.3);
+            border-radius: 9999px;
+        }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(75, 85, 99, 0.4);
+        }
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(31, 41, 55, 0.8);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen transition-colors duration-300 flex flex-col">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-5 right-5 z-50 transform -translate-y-24 opacity-0 transition-all duration-300 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl glass-panel border border-emerald-500/30 text-emerald-400 pointer-events-none">
+        <i class="fa-solid fa-circle-check text-lg"></i>
+        <span id="toast-message" class="text-sm font-medium">Action completed!</span>
+    </div>
+
+    <!-- Browser Warning Banner -->
+    <div id="browser-warning" class="hidden bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 text-xs text-amber-400 flex items-center justify-between">
+        <div class="flex items-center gap-2 max-w-7xl mx-auto w-full">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>Speech Recognition is limited on this browser. For best speech-to-text results, Google Chrome or Microsoft Edge is recommended.</span>
+        </div>
+    </div>
+
+    <!-- Header Navigation -->
+    <header class="border-b border-gray-800/80 sticky top-0 z-40 glass-panel">
+        <div class="max-w-[1600px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 via-indigo-600 to-accent-600 flex items-center justify-center text-white shadow-lg shadow-brand-500/20">
+                    <i class="fa-solid fa-brain text-sm"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base leading-tight tracking-tight flex items-center gap-2">
+                        Voicecribe <span class="text-[10px] font-semibold text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded-full border border-brand-500/20">Google Images Spotlight</span>
+                    </h1>
+                </div>
+            </div>
+
+            <!-- Speech Controls & Status -->
+            <div class="flex items-center gap-3">
+                <div class="hidden sm:flex items-center gap-2 px-3 py-1 bg-gray-800/80 rounded-lg border border-gray-700/60 text-xs">
+                    <span id="status-badge" class="w-2 h-2 rounded-full bg-gray-400"></span>
+                    <span id="status-text" class="font-medium text-gray-300">Ready</span>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button id="start-btn" class="flex items-center gap-2 px-4 py-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-medium text-xs shadow-md shadow-brand-500/20 active:scale-95 transition-all">
+                        <i class="fa-solid fa-microphone"></i>
+                        <span>Start</span>
+                    </button>
+                    <button id="stop-btn" disabled class="flex items-center gap-2 px-4 py-1.5 rounded-xl bg-gray-800 text-gray-500 cursor-not-allowed font-medium text-xs transition-all">
+                        <i class="fa-solid fa-square"></i>
+                        <span>Stop</span>
+                    </button>
+                    <button id="clear-all-btn" class="p-1.5 text-gray-400 hover:text-red-400 rounded-lg hover:bg-gray-800 transition-colors text-xs" title="Clear All Data">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+
+                <!-- Language Selector -->
+                <div class="relative hidden md:block">
+                    <select id="language-select" class="appearance-none bg-gray-800 border border-gray-700 text-xs font-medium rounded-xl px-2.5 py-1.5 pr-6 focus:outline-none focus:ring-1 focus:ring-brand-500 cursor-pointer">
+                        <option value="en-US">English (US)</option>
+                        <option value="en-GB">English (UK)</option>
+                        <option value="es-ES">Spanish</option>
+                        <option value="fr-FR">French</option>
+                        <option value="de-DE">German</option>
+                        <option value="hi-IN">Hindi</option>
+                        <option value="zh-CN">Chinese</option>
+                        <option value="ja-JP">Japanese</option>
+                    </select>
+                    <i class="fa-solid fa-globe text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 text-[10px] pointer-events-none"></i>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Layout -->
+    <main class="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Embedded Google Images Window (Star Show - 7 Cols) -->
+        <section class="lg:col-span-7 xl:col-span-8 flex flex-col gap-4">
+            
+            <div class="glass-panel rounded-2xl p-4 border border-gray-800/80 shadow-xl flex flex-col gap-3 flex-1 min-h-[500px]">
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-800/80 pb-3">
+                    <div class="flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-lg bg-brand-500/10 text-brand-400 border border-brand-500/20 flex items-center justify-center">
+                            <i class="fa-brands fa-google text-xs"></i>
+                        </div>
+                        <div>
+                            <h2 class="font-bold text-sm text-gray-100 flex items-center gap-2">
+                                Embedded Google Image Search Window
+                                <span id="active-topic-badge" class="text-[10px] font-mono bg-brand-500/20 text-brand-400 px-2 py-0.5 rounded-full border border-brand-500/30">
+                                    Listening...
+                                </span>
+                            </h2>
+                            <p class="text-[11px] text-gray-400">Updates dynamically every 15s with live Google Images search results</p>
+                        </div>
+                    </div>
+
+                    <a id="expand-google-btn" href="https://images.google.com" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-md shadow-brand-500/20 transition-all shrink-0">
+                        <span>Open Google Images #1 Result</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                    </a>
+                </div>
+
+                <!-- Google Images Iframe Window -->
+                <div class="relative flex-1 w-full rounded-xl overflow-hidden border border-gray-800 bg-gray-950 min-h-[420px]">
+                    <iframe 
+                        id="google-images-iframe"
+                        class="w-full h-full border-0 min-h-[420px]"
+                        src="about:blank"
+                        title="Google Images Search Window"
+                        sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                    ></iframe>
+
+                    <!-- Placeholder before first search -->
+                    <div id="iframe-placeholder" class="absolute inset-0 bg-gray-950/95 flex flex-col items-center justify-center p-6 text-center gap-3">
+                        <div class="w-12 h-12 rounded-2xl bg-gray-900 border border-gray-800 flex items-center justify-center text-brand-400 shadow-xl">
+                            <i class="fa-solid fa-wand-magic-sparkles text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-gray-200 text-sm">Google Images Window Ready</h3>
+                            <p class="text-xs text-gray-400 mt-1 max-w-sm">Press "Start" and speak. Every 15 seconds, local NLP extracts a 3-5 word Noun-Verb summary and updates Google Images search results automatically.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Sidebar Controls, Live Speech Transcription & Topics Timeline (5 Cols) -->
+        <section class="lg:col-span-5 xl:col-span-4 flex flex-col gap-4">
+            
+            <!-- Audio Wave Visualizer & 15s Buffer Monitor -->
+            <div class="glass-panel rounded-2xl p-4 border border-gray-800/80 shadow-md flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2 text-xs font-semibold text-brand-400">
+                        <i class="fa-solid fa-wave-square"></i>
+                        <span>Live Audio & 15s Buffer</span>
+                    </div>
+                    <canvas id="visualizer-canvas" class="w-28 h-6 bg-gray-950 rounded-lg border border-gray-800"></canvas>
+                </div>
+
+                <!-- Buffer Snippet -->
+                <div class="bg-gray-950 rounded-xl p-2.5 border border-gray-800/80 text-xs italic text-gray-400 min-h-[45px] flex items-center">
+                    <p id="buffer-preview" class="line-clamp-2 w-full">
+                        (Rolling 15s speech buffer empty...)
+                    </p>
+                </div>
+            </div>
+
+            <!-- Compact Speech Transcription Area -->
+            <div class="glass-panel rounded-2xl border border-gray-800/80 shadow-md flex flex-col flex-1 overflow-hidden min-h-[220px]">
+                <div class="px-4 py-2.5 bg-gray-900/80 border-b border-gray-800/80 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-align-left text-brand-400 text-xs"></i>
+                        <h3 class="font-semibold text-xs text-gray-200">Live Speech-to-Text</h3>
+                    </div>
+                    
+                    <div class="flex items-center gap-2 text-[11px] text-gray-400">
+                        <button id="copy-btn" class="hover:text-brand-400 transition-colors" title="Copy Text"><i class="fa-solid fa-copy"></i></button>
+                        <button id="export-btn" class="hover:text-brand-400 transition-colors" title="Export File"><i class="fa-solid fa-download"></i></button>
+                    </div>
+                </div>
+
+                <div class="p-3 flex-1 flex flex-col relative bg-gray-950/40">
+                    <textarea 
+                        id="transcript-area"
+                        class="w-full flex-1 bg-transparent resize-none focus:outline-none custom-scrollbar text-xs leading-relaxed text-gray-200 placeholder-gray-600"
+                        placeholder="Live speech transcript will stream here as you speak..."
+                    ></textarea>
+                    <div id="interim-text" class="text-[11px] italic text-brand-400 h-4 mt-1 truncate"></div>
+                </div>
+
+                <div class="px-3 py-1.5 bg-gray-900/60 border-t border-gray-800/60 flex items-center justify-between text-[10px] text-gray-500 font-mono">
+                    <span>Words: <strong id="word-count" class="text-gray-300">0</strong></span>
+                    <span>Chars: <strong id="char-count" class="text-gray-300">0</strong></span>
+                </div>
+            </div>
+
+            <!-- Topic Summaries Timeline Feed -->
+            <div class="glass-panel rounded-2xl border border-gray-800/80 shadow-md flex flex-col h-[220px] overflow-hidden">
+                <div class="px-4 py-2.5 bg-gray-900/80 border-b border-gray-800/80 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-accent-500 text-xs"></i>
+                        <h3 class="font-semibold text-xs text-gray-200">15s Topic Feed</h3>
+                    </div>
+                    <span id="topic-count-tag" class="text-[10px] font-mono bg-accent-500/10 text-accent-400 px-2 py-0.5 rounded border border-accent-500/20">0 Topics</span>
+                </div>
+
+                <div id="topics-history-list" class="flex-1 p-3 flex flex-col gap-2 overflow-y-auto custom-scrollbar bg-gray-950/30">
+                    <p id="empty-history-msg" class="text-[11px] text-gray-500 italic text-center py-6">
+                        Every 15s, local NLP extracts a 3-5 word Noun-Verb summary and updates Google Images...
+                    </p>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <script>
+        // State Management
+        let isRecording = false;
+        let recognition = null;
+        let speechHistory = []; // Array of { text, timestamp }
+        let intervalTimer = null;
+        let lastProcessedText = "";
+        let topicHistory = [];
+
+        // Audio Visualizer Context
+        let audioCtx = null;
+        let analyser = null;
+        let micStream = null;
+        let animFrameId = null;
+
+        // Stopwords Set for Local NLP Heuristic
+        const STOPWORDS = new Set([
+            'a','about','above','after','again','against','all','am','an','and','any','are','aren\'t','as','at','be','because','been','before',
+            'being','below','between','both','but','by','can','can\'t','cannot','could','couldn\'t','did','didn\'t','do','does','doesn\'t','doing',
+            'don\'t','down','during','each','few','for','from','further','had','hadn\'t','has','hasn\'t','have','haven\'t','having','he','he\'d',
+            'he\'ll','he\'s','her','here','here\'s','hers','herself','him','himself','his','how','how\'s','i','i\'d','i\'ll','i\'m','i\'ve','if',
+            'in','into','is','isn\'t','it','it\'s','its','itself','let\'s','me','more','most','mustn\'t','my','myself','no','nor','not','of','off',
+            'on','once','only','or','other','ought','our','ours','ourselves','out','over','own','same','shan\'t','she','she\'d','she\'ll','she\'s',
+            'should','shouldn\'t','so','some','such','than','that','that\'s','the','their','theirs','them','themselves','then','there','there\'s',
+            'these','they','they\'d','they\'ll','they\'re','they\'ve','this','those','through','to','too','under','until','up','very','was','wasn\'t',
+            'we','we\'d','we\'ll','we\'re','we\'ve','were','weren\'t','what','what\'s','when','when\'s','where','where\'s','which','while','who',
+            'who\'s','whom','why','why\'s','with','won\'t','would','wouldn\'t','you','you\'d','you\'ll','you\'re','you\'ve','your','yours','yourself','yourselves',
+            'also','just','like','going','think','know','really','said','thing','things','want','get','make','see','go'
+        ]);
+
+        const VERB_ING_PATTERN = /ing$/i;
+        const COMMON_ACTION_VERBS = new Set([
+            'discuss','analyze','review','build','design','create','develop','plan','evaluate','assess','talk','speech','explain',
+            'describe','present','summary','examine','discussing','analyzing','reviewing','building','designing','creating','developing'
+        ]);
+
+        // DOM Elements
+        const startBtn = document.getElementById('start-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const clearAllBtn = document.getElementById('clear-all-btn');
+        const transcriptArea = document.getElementById('transcript-area');
+        const interimText = document.getElementById('interim-text');
+        const languageSelect = document.getElementById('language-select');
+        const statusBadge = document.getElementById('status-badge');
+        const statusText = document.getElementById('status-text');
+        const bufferPreviewEl = document.getElementById('buffer-preview');
+        const topicsHistoryList = document.getElementById('topics-history-list');
+        const emptyHistoryMsg = document.getElementById('empty-history-msg');
+        const topicCountTag = document.getElementById('topic-count-tag');
+        const wordCountEl = document.getElementById('word-count');
+        const charCountEl = document.getElementById('char-count');
+
+        // Google Elements
+        const activeTopicBadge = document.getElementById('active-topic-badge');
+        const expandGoogleBtn = document.getElementById('expand-google-btn');
+        const googleIframe = document.getElementById('google-images-iframe');
+        const iframePlaceholder = document.getElementById('iframe-placeholder');
+
+        const canvas = document.getElementById('visualizer-canvas');
+        const canvasCtx = canvas.getContext('2d');
+
+        // Speech Recognition Setup
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            document.getElementById('browser-warning').classList.remove('hidden');
+            startBtn.disabled = true;
+            statusText.textContent = "Unsupported";
+        } else {
+            initSpeechRecognition();
+        }
+
+        function initSpeechRecognition() {
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = languageSelect.value;
+
+            recognition.onstart = () => {
+                isRecording = true;
+                updateUIState(true);
+                startBufferLoop();
+                startAudioVisualizer();
+            };
+
+            recognition.onresult = (event) => {
+                let finalChunk = '';
+                let interimChunk = '';
+
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    const textPart = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalChunk += textPart + ' ';
+                    } else {
+                        interimChunk += textPart;
+                    }
+                }
+
+                if (finalChunk) {
+                    transcriptArea.value += finalChunk;
+                    const now = Date.now();
+                    speechHistory.push({ text: finalChunk.trim(), timestamp: now });
+                    updateStats();
+                    transcriptArea.scrollTop = transcriptArea.scrollHeight;
+                }
+
+                interimText.textContent = interimChunk ? `"${interimChunk}"` : '';
+                updateBufferPreview();
+            };
+
+            recognition.onerror = (e) => {
+                console.warn('Speech recognition warning:', e.error);
+                if (e.error === 'not-allowed') {
+                    alert('Microphone access was denied. Please allow microphone permissions in browser settings.');
+                    stopRecording();
+                }
+            };
+
+            recognition.onend = () => {
+                if (isRecording) {
+                    try { recognition.start(); } catch(err) { stopRecording(); }
+                } else {
+                    updateUIState(false);
+                    stopBufferLoop();
+                    stopAudioVisualizer();
+                }
+            };
+        }
+
+        // 15-Second Rolling Buffer Extraction
+        function get15SecondBufferText() {
+            const now = Date.now();
+            const fifteenSecsAgo = now - 15000;
+            const recentSnippets = speechHistory.filter(item => item.timestamp >= fifteenSecsAgo);
+            return recentSnippets.map(i => i.text).join(' ').trim();
+        }
+
+        function updateBufferPreview() {
+            const bufferText = get15SecondBufferText();
+            if (bufferText) {
+                bufferPreviewEl.textContent = `"${bufferText}"`;
+                bufferPreviewEl.classList.remove('italic', 'text-gray-500');
+            } else {
+                bufferPreviewEl.textContent = '(Rolling 15s speech buffer empty...)';
+                bufferPreviewEl.classList.add('italic', 'text-gray-500');
+            }
+        }
+
+        function startBufferLoop() {
+            stopBufferLoop();
+            intervalTimer = setInterval(() => {
+                triggerInstantLocalNLP();
+            }, 15000);
+        }
+
+        function stopBufferLoop() {
+            if (intervalTimer) clearInterval(intervalTimer);
+            intervalTimer = null;
+        }
+
+        // Zero-Cost Local Noun-Verb Topic Summarization Engine
+        function triggerInstantLocalNLP() {
+            const bufferText = get15SecondBufferText();
+            if (!bufferText || bufferText.length < 3 || bufferText === lastProcessedText) {
+                return;
+            }
+
+            lastProcessedText = bufferText;
+            const summaryPhrase = generateNounVerbSummary(bufferText);
+            const timestampStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            // Add topic to timeline history
+            addTopicToHistory(summaryPhrase, timestampStr);
+
+            // Update Google Images Iframe Window
+            updateGoogleImagesWindow(summaryPhrase);
+        }
+
+        function generateNounVerbSummary(text) {
+            const rawWords = text.replace(/[^\w\s]/gi, '').split(/\s+/).filter(Boolean);
+            if (rawWords.length === 0) return "General Discussion";
+
+            const filteredWords = [];
+            const wordFreq = {};
+
+            rawWords.forEach(w => {
+                const lower = w.toLowerCase();
+                if (!STOPWORDS.has(lower) && lower.length > 2) {
+                    filteredWords.push(lower);
+                    wordFreq[lower] = (wordFreq[lower] || 0) + 1;
+                }
+            });
+
+            if (filteredWords.length === 0) return "Live Speech Context";
+
+            let actionVerb = "";
+            for (let word of filteredWords) {
+                if (COMMON_ACTION_VERBS.has(word) || VERB_ING_PATTERN.test(word)) {
+                    actionVerb = word.charAt(0).toUpperCase() + word.slice(1);
+                    break;
+                }
+            }
+
+            if (!actionVerb) {
+                actionVerb = "Discussing";
+            } else if (!actionVerb.endsWith('ing') && !actionVerb.endsWith('ed')) {
+                actionVerb = actionVerb + "ing";
+            }
+
+            const sortedWords = Object.keys(wordFreq).sort((a,b) => wordFreq[b] - wordFreq[a]);
+            const selectedNouns = [];
+
+            for (let w of sortedWords) {
+                if (w.toLowerCase() !== actionVerb.toLowerCase() && !COMMON_ACTION_VERBS.has(w)) {
+                    selectedNouns.push(w.charAt(0).toUpperCase() + w.slice(1));
+                }
+                if (selectedNouns.length >= 3) break;
+            }
+
+            if (selectedNouns.length === 0) {
+                selectedNouns.push("Concepts");
+            }
+
+            const resultPhrase = `${actionVerb} ${selectedNouns.join(' ')}`;
+            return resultPhrase.split(' ').slice(0, 5).join(' ');
+        }
+
+        // Update Google Images Iframe Window
+        function updateGoogleImagesWindow(query) {
+            if (!query) return;
+
+            const encodedQuery = encodeURIComponent(query);
+            
+            // Embedded Google Images Search Iframe URL
+            const googleSearchUrl = `https://www.google.com/search?q=${encodedQuery}&tbm=isch&udm=2&igu=1`;
+            iframePlaceholder.classList.add('hidden');
+            googleIframe.src = googleSearchUrl;
+
+            // Direct Open Button URL
+            expandGoogleBtn.href = `https://www.google.com/search?q=${encodedQuery}&tbm=isch`;
+            activeTopicBadge.textContent = query;
+
+            showToast(`Google Images updated for topic: "${query}"`);
+        }
+
+        // Add Topic Entry to Timeline
+        function addTopicToHistory(topic, timestamp) {
+            if (emptyHistoryMsg) emptyHistoryMsg.classList.add('hidden');
+
+            topicHistory.unshift({ topic, timestamp });
+            topicCountTag.textContent = `${topicHistory.length} Topics`;
+
+            const item = document.createElement('div');
+            item.className = "flex items-center justify-between p-2 rounded-xl bg-gray-900 border border-gray-800 shadow-sm text-xs hover:border-brand-500 transition-all cursor-pointer group";
+            item.onclick = () => updateGoogleImagesWindow(topic);
+
+            item.innerHTML = `
+                <div class="flex items-center gap-2 overflow-hidden">
+                    <span class="text-[10px] font-mono text-brand-400 bg-brand-500/10 px-1.5 py-0.5 rounded shrink-0">${timestamp}</span>
+                    <span class="font-semibold text-gray-200 truncate group-hover:text-brand-400">${topic}</span>
+                </div>
+                <div class="flex items-center gap-1 text-gray-500 group-hover:text-brand-400 shrink-0 text-[10px]">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </div>
+            `;
+
+            topicsHistoryList.prepend(item);
+        }
+
+        // Audio Wave Visualizer
+        async function startAudioVisualizer() {
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const source = audioCtx.createMediaStreamSource(micStream);
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 32;
+                source.connect(analyser);
+
+                function draw() {
+                    if (!isRecording) return;
+                    animFrameId = requestAnimationFrame(draw);
+                    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                    analyser.getByteFrequencyData(dataArray);
+
+                    canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+                    const barWidth = canvas.width / dataArray.length;
+
+                    for (let i = 0; i < dataArray.length; i++) {
+                        const barHeight = (dataArray[i] / 255) * canvas.height;
+                        canvasCtx.fillStyle = '#60a5fa';
+                        canvasCtx.fillRect(i * barWidth, canvas.height - barHeight, barWidth - 1, barHeight);
+                    }
+                }
+                draw();
+            } catch (e) {
+                console.warn('Microphone visualization error:', e);
+            }
+        }
+
+        function stopAudioVisualizer() {
+            if (animFrameId) cancelAnimationFrame(animFrameId);
+            if (micStream) micStream.getTracks().forEach(t => t.stop());
+            if (audioCtx) audioCtx.close();
+            canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Recording Controls
+        function startRecording() {
+            if (!recognition) return;
+            try {
+                recognition.lang = languageSelect.value;
+                recognition.start();
+            } catch(e) {}
+        }
+
+        function stopRecording() {
+            isRecording = false;
+            if (recognition) try { recognition.stop(); } catch(e) {}
+            updateUIState(false);
+            stopBufferLoop();
+            stopAudioVisualizer();
+        }
+
+        function updateUIState(listening) {
+            if (listening) {
+                startBtn.disabled = true;
+                startBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                stopBtn.disabled = false;
+                stopBtn.className = 'flex items-center gap-2 px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-medium text-xs shadow-md transition-all cursor-pointer';
+                
+                statusBadge.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+                statusText.textContent = 'Listening...';
+            } else {
+                startBtn.disabled = false;
+                startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                stopBtn.disabled = true;
+                stopBtn.className = 'flex items-center gap-2 px-4 py-1.5 rounded-xl bg-gray-800 text-gray-500 cursor-not-allowed font-medium text-xs transition-all';
+
+                statusBadge.className = 'w-2 h-2 rounded-full bg-gray-400';
+                statusText.textContent = 'Ready';
+            }
+        }
+
+        function updateStats() {
+            const text = transcriptArea.value.trim();
+            wordCountEl.textContent = text ? text.split(/\s+/).length : 0;
+            charCountEl.textContent = text.length;
+        }
+
+        // CLEAR ALL BUTTON FUNCTION
+        clearAllBtn.addEventListener('click', () => {
+            transcriptArea.value = '';
+            interimText.textContent = '';
+            speechHistory = [];
+            topicHistory = [];
+            lastProcessedText = '';
+            
+            topicsHistoryList.innerHTML = '';
+            topicsHistoryList.appendChild(emptyHistoryMsg);
+            emptyHistoryMsg.classList.remove('hidden');
+            topicCountTag.textContent = '0 Topics';
+
+            googleIframe.src = 'about:blank';
+            iframePlaceholder.classList.remove('hidden');
+            
+            activeTopicBadge.textContent = 'Listening...';
+            expandGoogleBtn.href = 'https://images.google.com';
+
+            updateStats();
+            updateBufferPreview();
+            
+            showToast('Cleared transcript, buffer, topic timeline & image window!');
+        });
+
+        // Copy Clipboard
+        document.getElementById('copy-btn').addEventListener('click', () => {
+            if (!transcriptArea.value.trim()) return showToast('Transcript is empty!');
+            transcriptArea.select();
+            document.execCommand('copy');
+            showToast('Copied to clipboard!');
+        });
+
+        // Export TXT
+        document.getElementById('export-btn').addEventListener('click', () => {
+            const text = transcriptArea.value.trim();
+            if (!text) return showToast('Transcript is empty!');
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `voicecribe-transcript-${new Date().toISOString().slice(0,10)}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Transcript downloaded!');
+        });
+
+        // Toast Helper
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = msg;
+            toast.classList.remove('-translate-y-24', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('-translate-y-24', 'opacity-0');
+            }, 2200);
+        }
+
+        // Event Listeners
+        startBtn.addEventListener('click', startRecording);
+        stopBtn.addEventListener('click', stopRecording);
+        transcriptArea.addEventListener('input', updateStats);
+
+        window.addEventListener('resize', () => {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        });
+        window.addEventListener('load', () => {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        });
+    </script>
+</body>
+</html>
